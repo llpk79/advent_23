@@ -1,6 +1,7 @@
 use std::fs::read_to_string;
+use std::io::SeekFrom::Start;
 
-fn traveled(sec: i64, time: i64, dist: i64) -> bool {
+fn new_record(sec: i64, time: i64, dist: i64) -> bool {
     sec * (time - sec) >= dist
 }
 
@@ -11,14 +12,15 @@ pub fn part_2() -> Option<i64> {
         .next()?
         .chars()
         .filter(|d| d.is_ascii_digit())
-        .fold("".to_string(), |s, c| format!("{s}{c}"))
+        .collect::<String>()
+        // .fold("".to_string(), |s, c| format!("{s}{c}"))
         .parse()
         .unwrap();
     let distance: i64 = lines
         .next()?
         .chars()
         .filter(|d| d.is_ascii_digit())
-        .fold("".to_string(), |s, c| format!("{s}{c}"))
+        .collect::<String>()
         .parse()
         .unwrap();
     println!("times {:?}\ndistances {:?}", time, distance);
@@ -28,17 +30,16 @@ pub fn part_2() -> Option<i64> {
     let mut steps = 0;
     while low + 1 < high {
         mid = (low + high) / 2;
-        if traveled(mid, time, distance) {
-            high = mid
-        } else {
-            low = mid
+        match new_record(mid, time, distance) {
+            true => high = mid,
+            false => low = mid,
         }
         steps += 1
     }
     println!("low {low} high {high}");
     assert_eq!(low + 1, high);
-    assert!(traveled(high, time, distance));
-    assert!(!traveled(low, time, distance));
+    assert!(new_record(high, time, distance));
+    assert!(!new_record(low, time, distance));
     let last = time - high + if time % 2 != 0 { 1 } else { 0 };
     let wins = last - high + 1;
     println!("binary {wins}, steps {steps}");
