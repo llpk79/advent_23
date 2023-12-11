@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 zip = { version = "0.10.0-alpha.1", features = [] }
-num = { version = "0.4.1", features = [] }
 chrono = "0.4.31"
 
 [[bin]]
