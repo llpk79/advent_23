@@ -2,7 +2,7 @@ use std::fs::read_to_string;
 use std::ops::Range;
 
 #[derive(Debug, Clone)]
-pub struct FarmMap {
+struct FarmMap {
     range: Range<i64>,
     adjustment: i64,
 }

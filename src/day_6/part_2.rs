@@ -1,5 +1,4 @@
 use std::fs::read_to_string;
-use std::io::SeekFrom::Start;
 
 fn new_record(sec: i64, time: i64, dist: i64) -> bool {
     sec * (time - sec) >= dist
@@ -29,7 +28,7 @@ pub fn part_2() -> Option<i64> {
     let mut mid: i64;
     let mut steps = 0;
     while low + 1 < high {
-        mid = (low + high) / 2;
+        mid = low + (high - low) / 2;
         match new_record(mid, time, distance) {
             true => high = mid,
             false => low = mid,

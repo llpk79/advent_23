@@ -76,7 +76,7 @@ pub fn part_2() -> Option<()> {
     let lines = input.lines();
     let cards = lines
         .map(|line| {
-            let mut split = line.split_once(' ').unwrap();
+            let split = line.split_once(' ').unwrap();
             let cards = split
                 .0
                 .chars()
