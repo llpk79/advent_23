@@ -9,7 +9,8 @@
 // use crate::day_9::part_2::part_2;
 // use crate::day_10::part_1::part_1;
 // use crate::day_10::part_2::part_2;
-use crate::day_11::part_1::part_1;
+// use crate::day_11::part_1::part_1;
+use crate::day_11::part_2::part_2;
 use chrono::Utc;
 
 pub mod day_1;

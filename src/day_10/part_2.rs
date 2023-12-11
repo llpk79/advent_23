@@ -135,12 +135,7 @@ pub fn part_2() -> Option<()> {
         last = ' ';
     }
     answers.sort();
-    println!("answers {answers:?}");
     println!("answer {:?}", answers.len());
 
     Some(())
 }
-
-// 354 too low
-// 393 too High
-// 1103 too high
