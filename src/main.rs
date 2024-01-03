@@ -1,7 +1,7 @@
 // use crate::day_15::part_1::part_1;
-// use crate::day_15::part_2::part_2;
+use crate::day_15::part_2::part_2;
 // use crate::day_16::part_1::part_1;
-use crate::day_16::part_2::part_2;
+// use crate::day_16::part_2::part_2;
 use chrono::Utc;
 
 pub mod day_1;

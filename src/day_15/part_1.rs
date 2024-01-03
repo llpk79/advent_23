@@ -1,13 +1,9 @@
 use std::fs::read_to_string;
 
-pub fn hash(input: &str) -> u32 {
-    let mut output = 0;
-    for char in input.chars() {
-        output += u32::from(char);
-        output *= 17;
-        output %= 256;
-    }
-    output
+fn hash(input: &str) -> u32 {
+    input
+        .chars()
+        .fold(0, |acc, ch| ((acc + ch as u32) * 17) % 256)
 }
 
 pub fn part_1() -> Option<()> {
