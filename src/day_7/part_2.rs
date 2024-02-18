@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::hash::Hash;
@@ -15,7 +16,7 @@ struct Hand {
     bet: i64,
 }
 
-fn count_cards(cards: &Vec<Card>) -> Vec<i64> {
+fn count_cards(cards: &[Card]) -> Vec<i64> {
     let mut counts = HashMap::new();
     for card in cards {
         let count = counts.entry(card).or_insert(0);
@@ -24,14 +25,12 @@ fn count_cards(cards: &Vec<Card>) -> Vec<i64> {
     let mut counts_vec: Vec<(i64, char)> = counts
         .iter()
         .map(|(card, num)| (*num as i64, card.label))
+        .sorted()
+        .rev()
         .collect();
-    counts_vec.sort();
-    counts_vec.reverse();
 
     if counts_vec[0].1 == 'J' {
-        counts_vec.reverse();
-        let jokes = counts_vec.pop().unwrap();
-        counts_vec.reverse();
+        let jokes = counts_vec.remove(0);
         counts_vec.push(jokes)
     }
 
@@ -47,9 +46,16 @@ fn count_cards(cards: &Vec<Card>) -> Vec<i64> {
 }
 
 pub fn part_2() -> Option<()> {
-    let chars = [
+    let cards_types = [
         'J', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'Q', 'K', 'A',
     ];
+
+    let card_ranks = cards_types
+        .iter()
+        .enumerate()
+        .map(|(i, c)| (*c, i as u8))
+        .collect::<HashMap<char, u8>>();
+
     let hand_types: Vec<Vec<i64>> = vec![
         vec![1, 1, 1, 1, 1],
         vec![1, 1, 1, 2],
@@ -66,26 +72,17 @@ pub fn part_2() -> Option<()> {
         .map(|(i, hand)| (hand, i as i64))
         .collect();
 
-    let char_ranks = chars
-        .iter()
-        .enumerate()
-        .map(|(i, c)| (*c, i as u8))
-        .collect::<HashMap<char, u8>>();
-
     let input = read_to_string("src/day_7/input.txt").expect("file exists");
-    let lines = input.lines();
-    let cards = lines
+    let card_sets = input
+        .lines()
         .map(|line| {
             let split = line.split_once(' ').unwrap();
             let cards = split
                 .0
                 .chars()
-                .map(|c| {
-                    let rank = char_ranks.get(&c).unwrap();
-                    Card {
-                        label: c,
-                        rank: *rank,
-                    }
+                .map(|c| Card {
+                    label: c,
+                    rank: *card_ranks.get(&c).unwrap(),
                 })
                 .collect::<Vec<Card>>();
             let bet: i64 = split
@@ -99,7 +96,7 @@ pub fn part_2() -> Option<()> {
         })
         .collect::<Vec<(Vec<Card>, i64)>>();
 
-    let mut hands = cards
+    let mut hands = card_sets
         .iter()
         .map(|hand| {
             let mut count = count_cards(&hand.0.clone());
