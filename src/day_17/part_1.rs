@@ -28,11 +28,13 @@ impl PartialEq for Block {
         self.cost == other.cost
     }
 }
+
 impl PartialOrd for Block {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
+
 impl Ord for Block {
     fn cmp(&self, other: &Self) -> Ordering {
         self.cost.cmp(&other.cost).reverse()
@@ -62,7 +64,7 @@ fn filter_blocks(
 ) -> Vec<Block> {
     blocks
         .into_iter()
-        .filter(|b| grid.contains_key(&b.pos.pos) && b.strt < 3)
+        .filter(|b| b.strt < 3 && grid.contains_key(&b.pos.pos))
         .collect()
 }
 
@@ -79,7 +81,7 @@ fn look(
             let blocks: Vec<Block> = vec![
                 Block {
                     cost: *west,
-                    strt: block.strt,
+                    strt: 0,
                     pos: Pos {
                         pos: (block.pos.pos.0, block.pos.pos.1 - 1),
                         dir: Direction::N,
@@ -87,7 +89,7 @@ fn look(
                 },
                 Block {
                     cost: *east,
-                    strt: block.strt,
+                    strt: 0,
                     pos: Pos {
                         pos: (block.pos.pos.0, block.pos.pos.1 + 1),
                         dir: Direction::E,
@@ -111,7 +113,7 @@ fn look(
             let blocks: Vec<Block> = vec![
                 Block {
                     cost: *west,
-                    strt: block.strt,
+                    strt: 0,
                     pos: Pos {
                         pos: (block.pos.pos.0, block.pos.pos.1 - 1),
                         dir: Direction::W,
@@ -119,7 +121,7 @@ fn look(
                 },
                 Block {
                     cost: *east,
-                    strt: block.strt,
+                    strt: 0,
                     pos: Pos {
                         pos: (block.pos.pos.0, block.pos.pos.1 + 1),
                         dir: Direction::E,
@@ -143,7 +145,7 @@ fn look(
             let blocks: Vec<Block> = vec![
                 Block {
                     cost: *north,
-                    strt: block.strt,
+                    strt: 0,
                     pos: Pos {
                         pos: (block.pos.pos.0 - 1, block.pos.pos.1),
                         dir: Direction::N,
@@ -151,7 +153,7 @@ fn look(
                 },
                 Block {
                     cost: *south,
-                    strt: block.strt,
+                    strt: 0,
                     pos: Pos {
                         pos: (block.pos.pos.0 + 1, block.pos.pos.1),
                         dir: Direction::S,
@@ -175,7 +177,7 @@ fn look(
             let blocks: Vec<Block> = vec![
                 Block {
                     cost: *north,
-                    strt: block.strt,
+                    strt: 0,
                     pos: Pos {
                         pos: (block.pos.pos.0 - 1, block.pos.pos.1),
                         dir: Direction::N,
@@ -183,7 +185,7 @@ fn look(
                 },
                 Block {
                     cost: *south,
-                    strt: block.strt,
+                    strt: 0,
                     pos: Pos {
                         pos: (block.pos.pos.0 + 1, block.pos.pos.1),
                         dir: Direction::S,
@@ -215,6 +217,7 @@ fn travel(
     queue.push(start);
     while !queue.is_empty() {
         let block = queue.pop()?;
+        println!("\nblock {:?}", block);
         if visited.contains(&block.pos.pos) {
             continue;
         }
@@ -222,46 +225,45 @@ fn travel(
 
         let neighbors = look(&block, grid, visited)?;
         for neighbor in neighbors {
+            println!("neighbor {:?}", neighbor);
             match cost_map.get(&neighbor.pos.pos) {
                 Some(existing) => {
-                    println!(
-                        "\nblock {:?} st {:?}\nneigh {:?} st {:?}\nexist {:?}",
-                        block.pos.pos, block.pos.dir, neighbor.pos.pos, neighbor.strt, existing
-                    );
-                    if (neighbor.strt + (neighbor.pos.dir == block.pos.dir) as i8) < 3 {
-                        println!("beep");
-                        let new_cost = &(block.cost + grid.get(&neighbor.pos.pos)?);
-                        let cost = min(existing, new_cost);
-                        cost_map.insert(neighbor.pos.pos, *cost);
-                    }
+                    let new_cost = &(block.cost + neighbor.cost);
+                    let cost = min(existing, new_cost);
+                    println!("existing cost {}, new cost {}", existing, new_cost);
+                    cost_map.insert(neighbor.pos.pos, *cost);
                 }
                 None => {
-                    cost_map
-                        .entry(neighbor.pos.pos)
-                        .or_insert(block.cost + grid.get(&neighbor.pos.pos)?);
+                    cost_map.insert(neighbor.pos.pos, block.cost + neighbor.cost);
                 }
             };
             queue.push(Block {
                 cost: *cost_map.get(&neighbor.pos.pos)?,
-                strt: if neighbor.pos.dir == block.pos.dir {
-                    block.strt + 1
-                } else {
-                    0
-                },
+                strt: neighbor.strt,
                 pos: neighbor.pos,
             });
 
             match path.get(&neighbor.pos.pos) {
                 Some(existing) => {
+                    println!("existing {:?}, cost {:?}", existing, *cost_map.get(&neighbor.pos.pos)?);
                     if existing.cost > *cost_map.get(&neighbor.pos.pos)?
-                        && ((neighbor.strt + (neighbor.pos.dir != block.pos.dir) as i8) < 3)
+                    // && ((existing.strt + (block.pos.dir != existing.pos.dir) as i8) < 3)
                     {
                         println!("bloop");
-                        path.insert(neighbor.pos.pos, block);
+                        path.insert(neighbor.pos.pos, Block {
+                            cost: *cost_map.get(&neighbor.pos.pos)?,
+                            strt: neighbor.strt,
+                            pos: block.pos,
+                        });
                     };
                 }
                 None => {
-                    path.entry(neighbor.pos.pos).or_insert(block);
+                    println!("bleep");
+                    path.entry(neighbor.pos.pos).or_insert(Block {
+                        cost: *cost_map.get(&neighbor.pos.pos)?,
+                        strt: neighbor.strt,
+                        pos: block.pos,
+                    });
                 }
             }
         }
