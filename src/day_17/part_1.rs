@@ -14,10 +14,11 @@ enum Direction {
 #[derive(Eq, Debug, Clone, Copy)]
 struct Block {
     cost: i16,
-    strt: i8,
+    straight: i8,
     pos: (u8, u8),
     dir: Direction,
 }
+
 
 impl PartialEq for Block {
     fn eq(&self, other: &Self) -> bool {
@@ -53,6 +54,27 @@ fn look_west(pos: (u8, u8), grid: &HashMap<(u8, u8), i16>) -> Option<&i16> {
     grid.get(&(pos.0, pos.1 - 1))
 }
 
+fn new_direction(from: (u8, u8), to: (u8, u8)) -> Direction {
+    let dif: (i8, i8) = (from.0 as i8 - to.0 as i8, from.1 as i8 - to.1 as i8);
+    match dif {
+        (1, 0) => Direction::N,
+        (0, 1) => Direction::W,
+        (-1, 0) => Direction::S,
+        (0, -1) => Direction::E,
+        _ => panic!(),
+    }
+}
+
+fn backward(from: Direction, to: Direction) -> bool {
+    match (from, to) {
+        (Direction::N, Direction::S) => true,
+        (Direction::W, Direction::E) => true,
+        (Direction::S, Direction::S) => true,
+        (Direction::E, Direction::W) => true,
+        _ => false
+    }
+}
+
 fn filter_blocks(
     blocks: Vec<Block>,
     grid: &HashMap<(u8, u8), i16>,
@@ -60,12 +82,12 @@ fn filter_blocks(
 ) -> Vec<Block> {
     blocks
         .into_iter()
-        .filter(|b| b.strt < 3 && grid.contains_key(&b.pos) && !visited.contains(&b.pos))
+        .filter(|b| b.straight < 3 && grid.contains_key(&b.pos) && !visited.contains(&b.pos))
         .collect()
 }
 
 fn look(
-    block: &Block,
+    block: Block,
     grid: &HashMap<(u8, u8), i16>,
     visited: &HashSet<(u8, u8)>,
 ) -> Option<Vec<Block>> {
@@ -77,19 +99,19 @@ fn look(
             let blocks: Vec<Block> = vec![
                 Block {
                     cost: *west,
-                    strt: 0,
+                    straight: 0,
                     pos: (block.pos.0, block.pos.1 - 1),
                     dir: Direction::N,
                 },
                 Block {
                     cost: *east,
-                    strt: 0,
+                    straight: 0,
                     pos: (block.pos.0, block.pos.1 + 1),
                     dir: Direction::E,
                 },
                 Block {
                     cost: *north,
-                    strt: block.strt + 1,
+                    straight: block.straight + 1,
                     pos: (block.pos.0 - 1, block.pos.1),
                     dir: Direction::N,
                 },
@@ -103,19 +125,19 @@ fn look(
             let blocks: Vec<Block> = vec![
                 Block {
                     cost: *west,
-                    strt: 0,
+                    straight: 0,
                     pos: (block.pos.0, block.pos.1 - 1),
                     dir: Direction::W,
                 },
                 Block {
                     cost: *east,
-                    strt: 0,
+                    straight: 0,
                     pos: (block.pos.0, block.pos.1 + 1),
                     dir: Direction::E,
                 },
                 Block {
                     cost: *south,
-                    strt: block.strt + 1,
+                    straight: block.straight + 1,
                     pos: (block.pos.0 + 1, block.pos.1),
                     dir: Direction::S,
                 },
@@ -129,19 +151,19 @@ fn look(
             let blocks: Vec<Block> = vec![
                 Block {
                     cost: *north,
-                    strt: 0,
+                    straight: 0,
                     pos: (block.pos.0 - 1, block.pos.1),
                     dir: Direction::N,
                 },
                 Block {
                     cost: *south,
-                    strt: 0,
+                    straight: 0,
                     pos: (block.pos.0 + 1, block.pos.1),
                     dir: Direction::S,
                 },
                 Block {
                     cost: *east,
-                    strt: block.strt + 1,
+                    straight: block.straight + 1,
                     pos: (block.pos.0, block.pos.1 + 1),
                     dir: Direction::E,
                 },
@@ -155,19 +177,19 @@ fn look(
             let blocks: Vec<Block> = vec![
                 Block {
                     cost: *north,
-                    strt: 0,
+                    straight: 0,
                     pos: (block.pos.0 - 1, block.pos.1),
                     dir: Direction::N,
                 },
                 Block {
                     cost: *south,
-                    strt: 0,
+                    straight: 0,
                     pos: (block.pos.0 + 1, block.pos.1),
                     dir: Direction::S,
                 },
                 Block {
                     cost: *west,
-                    strt: block.strt + 1,
+                    straight: block.straight + 1,
                     pos: (block.pos.0, block.pos.1 - 1),
                     dir: Direction::W,
                 },
@@ -181,54 +203,66 @@ fn travel(
     start: Block,
     path: &mut HashMap<(u8, u8), Block>,
     grid: &HashMap<(u8, u8), i16>,
+    finish: (u8, u8),
 ) -> Option<()> {
     let mut queue = BinaryHeap::new();
     let mut visited: HashSet<(u8, u8)> = HashSet::new();
+    let mut cost_map: HashMap<(u8, u8), i16> = HashMap::new();
 
+    // queue should not be of Blocks but of (cost, pos)
     queue.push(start);
     while !queue.is_empty() {
         let block = queue.pop()?;
-        println!("\nblock {:?}", block);
-        if visited.contains(&block.pos) {
-            continue;
-        }
+        // println!("\nblock {:?}", block);
+        // if block.pos == finish {
+        //     break;
+        // }
+        // if visited.contains(&block.pos) {
+        //     continue;
+        // }
         visited.insert(block.pos);
-
-        let neighbors = look(&block, grid, &visited)?;
+        let neighbors = look(block, grid, &visited)?;
         for neighbor in neighbors {
-            println!("neighbor {:?}", neighbor);
-            let new_cost = neighbor.cost + block.cost;
+            let existing_cost = *cost_map.get(&neighbor.pos).unwrap_or(&5000_i16);
+            let new_cost = block.cost + neighbor.cost;
             match path.get(&neighbor.pos) {
                 Some(existing) => {
-                    println!("existing {:?}, neighbor {:?}", existing, neighbor);
-                    if existing.cost > new_cost
-                        || (existing.cost == new_cost && block.strt > neighbor.strt)
+                    if existing_cost > new_cost
+                        || (existing_cost == new_cost && existing.straight - neighbor.straight > 0 && neighbor.cost < *grid.get(&existing.pos)?)
                     {
-                        println!("bloop");
+                        let cost = min(existing_cost, new_cost);
+                        cost_map.insert(neighbor.pos, cost);
+                        println!("\nnew {}, exist {}", new_cost, existing_cost);
+                        println!("block {:?}\n\tneighbor {:?}\n\texisting {:?}", block, neighbor, existing);
                         path.insert(neighbor.pos, Block {
-                            cost: new_cost,
-                            strt: neighbor.strt + (block.dir == neighbor.dir) as i8,
+                            cost,
+                            straight: neighbor.straight,
                             pos: block.pos,
+                            dir: neighbor.dir,
+                        });
+                        queue.push(Block {
+                            cost,
+                            straight: neighbor.straight,
+                            pos: neighbor.pos,
                             dir: neighbor.dir,
                         });
                     };
                 }
                 None => {
-                    println!("bleep");
-                    path.entry(neighbor.pos).or_insert(Block {
+                    path.insert(neighbor.pos, Block {
                         cost: new_cost,
-                        strt: neighbor.strt,
+                        straight: neighbor.straight,
                         pos: block.pos,
+                        dir: neighbor.dir,
+                    });
+                    queue.push(Block {
+                        cost: new_cost,
+                        straight: neighbor.straight,
+                        pos: neighbor.pos,
                         dir: neighbor.dir,
                     });
                 }
             }
-            queue.push(Block {
-                cost: new_cost,
-                strt: neighbor.strt,
-                pos: neighbor.pos,
-                dir: neighbor.dir,
-            });
         }
     }
     Some(())
@@ -249,14 +283,14 @@ pub fn part_1() -> Option<()> {
 
     let start = Block {
         cost: 0,
-        strt: 0,
+        straight: 0,
         pos: (0, 0),
         dir: Direction::E,
     };
 
     let finish = (grid_size - 1, grid_size - 1);
     let path: &mut HashMap<(u8, u8), Block> = &mut HashMap::new();
-    travel(start, path, &grid);
+    travel(start, path, &grid, finish);
     let mut path_vec: Vec<(u8, u8)> = Vec::new();
     let mut next = path.get(&finish)?;
     loop {
@@ -269,6 +303,7 @@ pub fn part_1() -> Option<()> {
     path_vec.push(finish);
 
     let answer: i16 = path_vec.iter().filter_map(|p| grid.get(p)).sum();
+    let char_map = HashMap::from([(Direction::S, 'v'), (Direction::N, '^'), (Direction::E, '>'), (Direction::W, '<')]);
 
     println!("answer {answer}");
     let path_map: HashSet<&(u8, u8)> = path_vec.iter().collect();
@@ -277,14 +312,14 @@ pub fn part_1() -> Option<()> {
         disp.push('\n');
         for j in 0..grid_size {
             if path_map.contains(&(i, j)) {
-                disp.push('#')
+                disp.push(*char_map.get(&path.get(&(i, j))?.dir)?)
             } else {
                 disp.push(char::from_digit(*grid.get(&(i, j)).unwrap() as u32, 10)?)
             }
         }
     }
     println!("disp\n {disp}");
-    println!("end: {:?}", path.get(&finish));
+    println!("{:?}", path.get(&(1, 2)));
 
     Some(())
 }
